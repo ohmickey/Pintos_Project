@@ -70,7 +70,7 @@ initd (void *f_name) {
 #ifdef VM
 	supplemental_page_table_init (&thread_current ()->spt);
 #endif
-	// process_init (); ?????????????????????
+	// process_init ();
 	if (process_exec (f_name) < 0)
 		PANIC("Fail to launch initd\n");
 	NOT_REACHED ();
@@ -195,7 +195,7 @@ __do_fork (void *aux) {
     // struct map_elem map[10];
     // int dup_count = 0;
 
-    for (int i = 2; i < FDCOUNT_LIMIT; i++){
+    for (int i = 0; i < FDCOUNT_LIMIT; i++){
         struct file *file = parent->fd_table[i];
         if (!file) continue;
 
@@ -250,6 +250,12 @@ process_exec (void *f_name) {
     //created by CPU
 	/* We first kill the current context */
 	process_cleanup ();
+
+    /* project3 */
+#ifdef VM
+    supplemental_page_table_init(&thread_current() -> spt);
+#endif
+    /* project3 */
 
     //project 2
     int argc = 0;
@@ -394,6 +400,12 @@ process_exit (void) {
     // 차일드는 부모가 exit_status를 확인하고 sema_up(free_sema)를
     // 부르기 전까지 제거 되지 않고 기다린다.(block상태 돌입)
 	sema_down(&cur->free_sema);
+
+    /*project 3*/
+    #ifdef EFILESYS
+    dir_close(thread_current()->cur_dir); // 스레드의 현재 작업 디렉터리의 정보 메모리에서 해지
+    #endif
+    /*project 3*/
 }
 
 /* Free the current process's resources. */
@@ -402,7 +414,10 @@ process_cleanup (void) {
 	struct thread *curr = thread_current ();
 
 #ifdef VM
-	supplemental_page_table_kill (&curr->spt);
+    /*project 3*/
+	if(!hash_empty(&curr->spt.pages))
+	    supplemental_page_table_kill (&curr->spt);
+    /*project 3*/
 #endif
 
 	uint64_t *pml4;
@@ -487,7 +502,7 @@ struct ELF64_PHDR {
 #define ELF ELF64_hdr
 #define Phdr ELF64_PHDR
 
-static bool setup_stack (struct intr_frame *if_);
+bool setup_stack (struct intr_frame *if_);
 static bool validate_segment (const struct Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		uint32_t read_bytes, uint32_t zero_bytes,
@@ -562,9 +577,9 @@ load (const char *file_name, struct intr_frame *if_) {
 			case PT_LOAD:
 				if (validate_segment (&phdr, file)) {
 					bool writable = (phdr.p_flags & PF_W) != 0;
-					uint64_t file_page = phdr.p_offset & ~PGMASK;
-					uint64_t mem_page = phdr.p_vaddr & ~PGMASK;
-					uint64_t page_offset = phdr.p_vaddr & PGMASK;
+					uint64_t file_page = phdr.p_offset & ~PGMASK; // offset(ofs)?
+					uint64_t mem_page = phdr.p_vaddr & ~PGMASK; // upage
+					uint64_t page_offset = phdr.p_vaddr & PGMASK; //111111111111
 					uint32_t read_bytes, zero_bytes;
 					if (phdr.p_filesz > 0) {
 						/* Normal segment.
@@ -580,6 +595,7 @@ load (const char *file_name, struct intr_frame *if_) {
 					}
 					if (!load_segment (file, file_page, (void *) mem_page,
 								read_bytes, zero_bytes, writable))
+                                // project3 말록으로 container struct 할당하고 넣어줌.
 						goto done;
 				}
 				else
@@ -714,7 +730,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 }
 
 /* Create a minimal stack by mapping a zeroed page at the USER_STACK */
-static bool
+bool
 setup_stack (struct intr_frame *if_) {
 	uint8_t *kpage;
 	bool success = false;
@@ -752,12 +768,41 @@ install_page (void *upage, void *kpage, bool writable) {
 /* From here, codes will be used after project 3.
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
+bool install_page (void *upage, void *kpage, bool writable) {
+	struct thread *t = thread_current ();
 
-static bool
+	/* Verify that there's not already a page at that virtual
+	 * address, then map our page there. */
+	return (pml4_get_page (t->pml4, upage) == NULL
+			&& pml4_set_page (t->pml4, upage, kpage, writable));
+}
+
+bool
 lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
+
+    /* project3 */
+    if (page == NULL) return false;
+
+	struct load_info* li = (struct load_info *) aux;
+
+	struct file *file = ((struct container *)aux)->file;
+	off_t offsetof = ((struct container *)aux)->offset;
+	size_t page_read_bytes = ((struct container *)aux)->page_read_bytes;
+    size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+	file_seek(file, offsetof);
+
+    if (file_read(file, page->frame->kva, page_read_bytes) != (int)page_read_bytes) {
+		palloc_free_page(page->frame->kva);
+        return false;
+    }
+    memset(page->frame->kva + page_read_bytes, 0, page_zero_bytes);
+
+    return true;
+    /* project3 */
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -789,7 +834,15 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
+		// void *aux = NULL;
+
+        /* project3 */
+		struct container *aux = (struct container *)malloc(sizeof(struct container));
+		aux->file = file;
+		aux->page_read_bytes = page_read_bytes;
+		aux->offset = ofs;
+        /* project3 */
+
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
 					writable, lazy_load_segment, aux))
 			return false;
@@ -797,13 +850,18 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
+
+        /* project3 */
+		ofs += page_read_bytes;
+        /* project3 */
+
 		upage += PGSIZE;
 	}
 	return true;
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
-static bool
+bool
 setup_stack (struct intr_frame *if_) {
 	bool success = false;
 	void *stack_bottom = (void *) (((uint8_t *) USER_STACK) - PGSIZE);
@@ -812,6 +870,17 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
+
+    /* project3 */
+	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)) { // 9, USER_STACK - PGSIZE, 1
+		success = vm_claim_page(stack_bottom);
+
+		if (success) {
+			if_->rsp = USER_STACK;
+            thread_current()->stack_bottom = stack_bottom;
+		}
+    }
+    /* project3 */
 
 	return success;
 }

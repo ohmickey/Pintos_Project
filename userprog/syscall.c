@@ -23,7 +23,8 @@ void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 
 // for project 2
-void check_address(const uint64_t*);
+struct page* check_address(const uint64_t*); //project 3
+
 void halt(void);
 void exit(int);
 tid_t fork (const char *);
@@ -38,6 +39,12 @@ int write(int, const void*, unsigned);
 void seek(int, unsigned);
 unsigned tell(int);
 void close(int);
+
+/* project 3*/
+void* mmap (void *, size_t, int, int, off_t);
+void munmap (void *);
+void check_valid_buffer(void*, unsigned, void*, bool); //project 3
+/* project 3*/
 
 // int dup2(int, int); //project2 - extra work
 
@@ -81,6 +88,10 @@ syscall_init (void) {
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
+    #ifdef VM
+		thread_current()->rsp_stack = f->rsp;
+    #endif
+
 	switch (f->R.rax){
 
         case SYS_HALT:
@@ -127,12 +138,15 @@ syscall_handler (struct intr_frame *f UNUSED) {
             break;
 
         case SYS_READ:
-            check_address(f->R.rsi); //check buffer size
+            // check_address(f->R.rsi); //check buffer size
+            check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 1);
+
             f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
             break;
 
         case SYS_WRITE:
-            check_address(f->R.rsi); //check buffer size
+            // check_address(f->R.rsi); //check buffer size
+            check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 0);
             f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
             break;
 
@@ -155,22 +169,37 @@ syscall_handler (struct intr_frame *f UNUSED) {
 
 
         /* Project 3 and optionally project 4. */
-        // case SYS_MMAP:
-        //     break;
-        // case SYS_MUNMAP:
-        //     break;
+        case SYS_MMAP:
+        	f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+            break;
+        case SYS_MUNMAP:
+        	munmap(f->R.rdi);
+            break;
 
         default:
             exit(-1);
             break;
     }
 }
-void check_address(const uint64_t *addr){
+/* project 3*/
+struct page* check_address(const uint64_t *addr){
 
     struct thread *cur = thread_current();
     if (!addr || is_kernel_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL)
         exit(-1);
+    return spt_find_page(&cur->spt, addr);
 }
+void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) {
+    for (int i = 0; i < size; i++) {
+        struct page* page = check_address(buffer + i);    // 인자로 받은 buffer부터 buffer + size까지의 크기가 한 페이지의 크기를 넘을수도 있음
+        if(page == NULL)
+            exit(-1);
+        if(to_write == true && page->writable == false)
+            exit(-1);
+    }
+}
+/* project 3*/
+
 
 void halt(void){
     power_off();
@@ -207,7 +236,9 @@ int wait(tid_t tid){
 }
 
 bool create(const char *file, unsigned initial_size){
+    if(file)
         return filesys_create(file, initial_size);
+    else exit(-1);
 }
 
 bool remove(const char *file){
@@ -215,9 +246,9 @@ bool remove(const char *file){
 }
 
 int open(const char *file){
-    // if (!file){
-    //     return -1;
-    // }
+    if (!file){
+        return -1;
+    }
     struct file *file_obj = filesys_open(file);
     if (!file_obj){
         return -1;
@@ -404,3 +435,33 @@ void process_close_file (int fd){
 	cur->fd_table[fd] = NULL;
 }
 
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
+
+    if (offset % PGSIZE != 0) {
+        return NULL;
+    }
+
+    if (pg_round_down(addr) != addr || is_kernel_vaddr(addr) || addr == NULL || (long long)length <= 0)
+        return NULL;
+
+    if (fd == 0 || fd == 1)
+        exit(-1);
+
+    // vm_overlap
+    if (spt_find_page(&thread_current()->spt, addr))
+        return NULL;
+
+    struct file *target = process_get_file(fd);
+	// struct file *target = find_file_by_fd(fd);
+
+    if (target == NULL)
+        return NULL;
+
+    void * ret = do_mmap(addr, length, writable, target, offset);
+
+    return ret;
+}
+
+void munmap (void *addr) {
+    do_munmap(addr);
+}

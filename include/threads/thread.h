@@ -6,9 +6,9 @@
 #include <stdint.h>
 #include "threads/interrupt.h"
 #include "threads/synch.h" //added to use structure semaphore
-#ifdef VM
+// #ifdef VM
 #include "vm/vm.h"
-#endif
+// #endif
 
 
 /* States in a thread's life cycle. */
@@ -135,15 +135,22 @@ struct thread {
     /* ----------------------------------project2*/
 
 
+
 // #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
-#ifdef USERPROG
-#endif
-#ifdef VM
+// #endif
+// #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
-	struct supplemental_page_table spt;
-#endif
+
+    /* project3 */
+    struct supplemental_page_table spt;
+	void *stack_bottom;
+	void* rsp_stack;
+	struct dir *cur_dir;
+    /* project3 */
+
+// #endif
 
 	/* Owned by thread.c. */
 	struct intr_frame tf;               // Information for switching(레지스터, 스택 포인터 포함)

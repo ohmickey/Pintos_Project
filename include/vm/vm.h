@@ -2,6 +2,10 @@
 #define VM_VM_H
 #include <stdbool.h>
 #include "threads/palloc.h"
+/* project 3 */
+#include "lib/kernel/hash.h"
+#include "threads/vaddr.h"
+/* project 3 */
 
 enum vm_type {
 	/* page not initialized */
@@ -47,6 +51,13 @@ struct page {
 
 	/* Your implementation */
 
+    //project 3
+    struct hash_elem hash_elem;
+    bool writable;
+    bool is_loaded;
+    uint8_t type;
+
+
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
 	union {
@@ -63,6 +74,8 @@ struct page {
 struct frame {
 	void *kva;
 	struct page *page;
+    //project 3
+    struct list_elem frame_elem;
 };
 
 /* The function table for page operations.
@@ -85,6 +98,8 @@ struct page_operations {
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
 struct supplemental_page_table {
+    //project 3
+    struct hash pages;
 };
 
 #include "threads/thread.h"
@@ -108,5 +123,12 @@ bool vm_alloc_page_with_initializer (enum vm_type type, void *upage,
 void vm_dealloc_page (struct page *page);
 bool vm_claim_page (void *va);
 enum vm_type page_get_type (struct page *page);
+
+    /* project3 */
+unsigned page_hash(const struct hash_elem *p_, void *aux UNUSED);
+bool page_less(const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED);
+void spt_destructor(struct hash_elem*, void*);
+bool delete_page(struct hash *, struct page *);
+bool insert_page(struct hash *, struct page *);
 
 #endif  /* VM_VM_H */
