@@ -248,8 +248,6 @@ process_exec (void *f_name) {
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
     //created by CPU
-	/* We first kill the current context */
-	process_cleanup ();
 
     /* project3 */
 #ifdef VM
@@ -269,14 +267,17 @@ process_exec (void *f_name) {
         ret_ptr = strtok_r(NULL, " ", &next_ptr);
     }
 
+    /* We first kill the current context */
+	process_cleanup ();
+
 	/* And then load the binary */
-    lock_acquire(&filesys_lock);
+    // lock_acquire(&filesys_lock);
 	success = load (file_name, &_if);
-    lock_release(&filesys_lock);
+    // lock_release(&filesys_lock);
 
 	/* If load failed, quit. */
 	if (!success){
-        // palloc_free_page (file_name);
+        // palloc_free_page (file_name); // project 3
 		return -1;
     }
 
@@ -403,7 +404,7 @@ process_exit (void) {
 
     /*project 3*/
     #ifdef EFILESYS
-    dir_close(thread_current()->cur_dir); // 스레드의 현재 작업 디렉터리의 정보 메모리에서 해지
+    dir_close(thread_current()->cur_dir); //
     #endif
     /*project 3*/
 }
@@ -578,8 +579,8 @@ load (const char *file_name, struct intr_frame *if_) {
 				if (validate_segment (&phdr, file)) {
 					bool writable = (phdr.p_flags & PF_W) != 0;
 					uint64_t file_page = phdr.p_offset & ~PGMASK; // offset(ofs)?
-					uint64_t mem_page = phdr.p_vaddr & ~PGMASK; // upage
-					uint64_t page_offset = phdr.p_vaddr & PGMASK; //111111111111
+					uint64_t mem_page = phdr.p_vaddr & ~PGMASK; // p_vaddr 의 뒷부분 0000000000
+					uint64_t page_offset = phdr.p_vaddr & PGMASK; //p_vaddr & 111111111111
 					uint32_t read_bytes, zero_bytes;
 					if (phdr.p_filesz > 0) {
 						/* Normal segment.
@@ -786,7 +787,7 @@ lazy_load_segment (struct page *page, void *aux) {
     /* project3 */
     if (page == NULL) return false;
 
-	struct load_info* li = (struct load_info *) aux;
+	// struct load_info* li = (struct load_info *) aux;
 
 	struct file *file = ((struct container *)aux)->file;
 	off_t offsetof = ((struct container *)aux)->offset;

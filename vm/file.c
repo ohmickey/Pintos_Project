@@ -74,7 +74,7 @@ file_backed_swap_out (struct page *page) {
 
     struct container * aux = (struct container *) page->uninit.aux;
 
-    // 사용 되었던 페이지(dirty page)인지 체크
+    // check dirty page
     if(pml4_is_dirty(thread_current()->pml4, page->va)){
         file_write_at(aux->file, page->va, aux->page_read_bytes, aux->offset);
         pml4_set_dirty (thread_current()->pml4, page->va, 0);
@@ -138,7 +138,7 @@ do_munmap (void *addr) {
 
         struct container * aux = (struct container *) page->uninit.aux;
 
-        // dirty(사용되었던) bit 체크
+        // check dirty bit
         if(pml4_is_dirty(thread_current()->pml4, page->va)) {
             file_write_at(aux->file, addr, aux->page_read_bytes, aux->offset);
             pml4_set_dirty (thread_current()->pml4, page->va, 0);

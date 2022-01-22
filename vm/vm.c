@@ -15,7 +15,7 @@
 // #include "lib/kernel/list.h"
 
 static struct list frame_table;
-static struct list_elem *start;
+static struct list_elem* start;
 // static struct lock clock_lock;
 // static struct lock spt_kill_lock;
 
@@ -217,7 +217,7 @@ vm_stack_growth (void *addr UNUSED) {
     /* project3 */
     if(vm_alloc_page(VM_ANON | VM_MARKER_0, addr, 1)) {
         vm_claim_page(addr);
-        thread_current()->stack_bottom -= PGSIZE;   // 스택은 위에서부터 쌓기 때문에 주소값 위치를 페이지 사이즈씩 마이너스함
+        thread_current()->stack_bottom -= PGSIZE;
     }
     /* project3 */
 }
@@ -243,10 +243,10 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 
     if (is_kernel_vaddr (addr) && user) return false;
 
-    void *rsp_stack = is_kernel_vaddr(f->rsp) ? thread_current()->rsp_stack : f->rsp;
+    void *rsp_stack = is_kernel_vaddr(f->rsp) ? thread_current()->rsp_stack : f->rsp; // f->rsp 가 커널스페이스의 주소라면
     if (not_present){
         if (!vm_claim_page(addr)) {
-            if (rsp_stack - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK) {
+            if (rsp_stack - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK) { //1MB만큼
                 vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
                 return true;
             }
@@ -276,7 +276,7 @@ vm_claim_page (void *va UNUSED) {
 	/* TODO: Fill this function */
 
     /* project3 */
-    struct page *page = spt_find_page (&thread_current () ->spt, va);
+    struct page *page = spt_find_page (&thread_current()->spt, va);
 	if (page == NULL) return false;
     /* project3 */
 
@@ -293,7 +293,7 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 
     /* project3 */
-	if (install_page(page->va, frame->kva, page->writable)) {	// 유저페이지가 이미 매핑되었거나 메모리 할당 실패 시 false
+	if (install_page(page->va, frame->kva, page->writable)) {
         return swap_in(page, frame->kva);
     }
     /* project3 */
@@ -313,7 +313,7 @@ page_hash (const struct hash_elem *p_, void *aux UNUSED) {
 
 bool
 page_less (const struct hash_elem *a_,
-           const struct hash_elem *b_, void *aux UNUSED) {
+            const struct hash_elem *b_, void *aux UNUSED) {
   const struct page *a = hash_entry (a_, struct page, hash_elem);
   const struct page *b = hash_entry (b_, struct page, hash_elem);
 
@@ -359,7 +359,7 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
                 return false;
         }
 
-        if (parent_page->operations->type != VM_UNINIT) {   // UNIT이 아닌 모든 페이지(stack 포함)는 부모의 것을 memcpy
+        if (parent_page->operations->type != VM_UNINIT) {
             struct page* child_page = spt_find_page(dst, upage);
             memcpy(child_page->frame->kva, parent_page->frame->kva, PGSIZE);
         }
@@ -395,7 +395,6 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 
         if (page->operations->type == VM_FILE) {
             do_munmap(page->va);
-            // destroy(page);
         }
     }
     hash_destroy(&spt->pages, spt_destructor);

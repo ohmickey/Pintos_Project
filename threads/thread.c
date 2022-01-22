@@ -673,7 +673,10 @@ int64_t get_next_tick_to_awake(void) {
 
 void preemption(void) {
 	if (!list_empty(&ready_list) && thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority) {
-		thread_yield();
+        if (intr_context())
+            intr_yield_on_return();
+        else
+            thread_yield();
 	}
 }
 
@@ -685,7 +688,7 @@ void donate_priority(void) {
 	int depth;
 	struct thread *cur = thread_current();
 
-	for (depth = 0; depth < 8; depth++) {		// depth 8까지 왜? - 도네이션이 무한히 많을 수 있기 때문에
+	for (depth = 0; depth < 8; depth++) {
 		if (cur->wait_on_lock == NULL) {
 			break;
 		}

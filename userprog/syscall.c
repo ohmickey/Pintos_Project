@@ -118,8 +118,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
             break;
 
         case SYS_CREATE:
-            check_address(f->R.rdi);
-            // check_address(f->R.rdi + f->R.rsi);
+            check_address(f->R.rdi); //project 3 tmp
             f->R.rax = create(f->R.rdi, f->R.rsi);
             break;
 
@@ -183,15 +182,16 @@ syscall_handler (struct intr_frame *f UNUSED) {
 }
 /* project 3*/
 struct page* check_address(const uint64_t *addr){
-
-    struct thread *cur = thread_current();
-    if (!addr || is_kernel_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL)
+    // if (!addr || is_kernel_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL)
+    if (is_kernel_vaddr(addr)) //pro3tmp
+    // if (!addr || is_kernel_vaddr(addr))
         exit(-1);
-    return spt_find_page(&cur->spt, addr);
+    return spt_find_page(&thread_current()->spt, addr);
 }
+
 void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) {
     for (int i = 0; i < size; i++) {
-        struct page* page = check_address(buffer + i);    // 인자로 받은 buffer부터 buffer + size까지의 크기가 한 페이지의 크기를 넘을수도 있음
+        struct page* page = check_address(buffer + i); // 하나씩 다 확인
         if(page == NULL)
             exit(-1);
         if(to_write == true && page->writable == false)
@@ -213,8 +213,7 @@ void exit(int status){
 }
 
 tid_t fork(const char *thread_name){
-    struct thread *cur = thread_current();
-    return process_fork(thread_name, &cur->pif);
+    return process_fork(thread_name, &thread_current()->pif);
 }
 
 int exec(const char *cmd_line){
@@ -365,9 +364,9 @@ void close(int fd){
 
     /* for dup2 */
 
+	process_close_file(fd);
 	if (fd <= 1 || file_obj <= 2) return;
 
-	process_close_file(fd);
 
 
 	// if (!file_obj->dup_count)
@@ -436,7 +435,7 @@ void process_close_file (int fd){
 }
 
 void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
-
+    // 파일의 시작점이 페이지 정렬이 되어있어야한다.
     if (offset % PGSIZE != 0) {
         return NULL;
     }
@@ -447,19 +446,14 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
     if (fd == 0 || fd == 1)
         exit(-1);
 
-    // vm_overlap
     if (spt_find_page(&thread_current()->spt, addr))
         return NULL;
 
-    struct file *target = process_get_file(fd);
-	// struct file *target = find_file_by_fd(fd);
-
-    if (target == NULL)
+    struct file *file = process_get_file(fd);
+    if (file == NULL)
         return NULL;
 
-    void * ret = do_mmap(addr, length, writable, target, offset);
-
-    return ret;
+    return do_mmap(addr, length, writable, file, offset);
 }
 
 void munmap (void *addr) {
