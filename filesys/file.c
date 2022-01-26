@@ -18,15 +18,16 @@ struct file *
 file_open (struct inode *inode) {
 	struct file *file = calloc (1, sizeof *file);
 	if (inode != NULL && file != NULL) {
-		file->inode = inode;
-		file->pos = 0;
-		file->deny_write = false;
+    file->inode = inode;
+    file->pos = 0;
+    file->deny_write = false;
 
-        /* project 2 - extra */
-        // file->dup_count = 0;
+    /* project 2 - extra */
+    // file->dup_count = 0;
 
-		return file;
-	} else {
+    return file;
+	}
+  else {
 		inode_close (inode);
 		free (file);
 		return NULL;
@@ -49,8 +50,8 @@ file_duplicate (struct file *file) {
 		nfile->pos = file->pos;
 		if (file->deny_write)
 			file_deny_write (nfile);
-        //project 2 extra
-        // nfile->dup_count = file->dup_count;
+    //project 2 extra
+    // nfile->dup_count = file->dup_count;
 	}
 	return nfile;
 }

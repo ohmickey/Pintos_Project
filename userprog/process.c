@@ -81,22 +81,22 @@ initd (void *f_name) {
 tid_t
 process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 
-    //project 2
-    struct thread *cur = thread_current();
+  //project 2
+  struct thread *cur = thread_current();
 
 	/* Clone current thread to new thread.*/
-    // 차일드 쓰레드 생성, tid 저장
-    tid_t tid = thread_create (name, cur->priority, __do_fork, cur); // cur->pif 에 f 가 저장되어있으므로, cur를 넘겨줘야댐.
-    if (tid == TID_ERROR){
-        return TID_ERROR;
-    }
+  // 차일드 쓰레드 생성, tid 저장
+  tid_t tid = thread_create (name, cur->priority, __do_fork, cur); // cur->pif 에 f 가 저장되어있으므로, cur를 넘겨줘야댐.
+  if (tid == TID_ERROR){
+      return TID_ERROR;
+  }
 
 	struct thread *child = thread_child(tid);
 	sema_down(&child->fork_sema); //
 	if (child->exit_status == -1)
 		return TID_ERROR;
 
-    //생성된 자식 쓰레드의 tid 리턴
+  //생성된 자식 쓰레드의 tid 리턴
 	return tid;
 }
 
@@ -112,16 +112,16 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) { //하다 말음
 	bool writable;
 
 	/* 1. TODO: If the parent_page is kernel page, then return immediately. */
-    //project 2
-    if(is_kernel_vaddr(va)) return true;
+  //project 2
+  if(is_kernel_vaddr(va)) return true;
 
 	/* 2. Resolve VA from the parent's page map level 4. */
 	parent_page = pml4_get_page (parent->pml4, va);
-    if(!parent_page) return false; //project 2
+  if(!parent_page) return false; //project 2
 
 	/* 3. TODO: Allocate new PAL_USER page for the child and set result to
 	 *    TODO: NEWPAGE. */
-    newpage = palloc_get_page(PAL_USER);
+  newpage = palloc_get_page(PAL_USER);
 	if (newpage == NULL){
 		printf("[fork-duplicate] failed to palloc new page\n"); // #ifdef DEBUG
 		return false;
@@ -138,7 +138,7 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) { //하다 말음
 	 *    permission. */
 	if (!pml4_set_page (current->pml4, va, newpage, writable)) {
 		/* 6. TODO: if fail to insert page, do error handling. */
-        printf("\n error at 6. TODO \n");
+    printf("\n error at 6. TODO \n");
 		return false;
 	}
 	return true;
@@ -164,7 +164,7 @@ __do_fork (void *aux) {
 
 	/* 1. Read the cpu context to local stack. */
 	memcpy (&if_, &parent->pif, sizeof (struct intr_frame));
-    if_.R.rax = 0; // return value sholud be 0
+  if_.R.rax = 0; // return value sholud be 0
 
 
 	/* 2. Duplicate PT */
@@ -189,48 +189,48 @@ __do_fork (void *aux) {
 
     //project 2 , check the limit
 	if (parent->fd_idx >= FDCOUNT_LIMIT)
-        goto error;
+    goto error;
 
-    // const int map_len = 10;
-    // struct map_elem map[10];
-    // int dup_count = 0;
+  // const int map_len = 10;
+  // struct map_elem map[10];
+  // int dup_count = 0;
 
-    for (int i = 0; i < FDCOUNT_LIMIT; i++){
-        struct file *file = parent->fd_table[i];
-        if (!file) continue;
+  for (int i = 0; i < FDCOUNT_LIMIT; i++){
+    struct file *file = parent->fd_table[i];
+    if (!file) continue;
 
-        // bool found = false;
-        // for(int j = 0; j < map_len; j ++){
-        //     if (map[j].key == file){
-        //         found = true;
-        //         current -> fd_table[i] = map[j].value;
-        //         break;
-        //     }
-        // }
-        // if (!found){
-        struct file *new_file;
-        if (file > 2)
-            new_file = file_duplicate(file);
-        else
-            new_file = file;
+    // bool found = false;
+    // for(int j = 0; j < map_len; j ++){
+    //     if (map[j].key == file){
+    //         found = true;
+    //         current -> fd_table[i] = map[j].value;
+    //         break;
+    //     }
+    // }
+    // if (!found){
+    struct file *new_file;
+    if (file > 2)
+        new_file = file_duplicate(file);
+    else
+        new_file = file;
 
-        current -> fd_table[i] = new_file;
-        // if (dup_count < map_len){
-        //     map[dup_count].key = file;
-        //     map[dup_count].value = new_file;
-        //     dup_count++;
-        // }
-        // }
-    }
-    current->fd_idx = parent->fd_idx;
-    sema_up(&current->fork_sema);
+    current -> fd_table[i] = new_file;
+    // if (dup_count < map_len){
+    //     map[dup_count].key = file;
+    //     map[dup_count].value = new_file;
+    //     dup_count++;
+    // }
+    // }
+  }
+  current->fd_idx = parent->fd_idx;
+  sema_up(&current->fork_sema);
 
 	/* Finally, switch to the newly created process. */
 	if (succ)
 		do_iret (&if_);
 error:
-    current->exit_status = TID_ERROR;
-    sema_up(&current->fork_sema);
+  current->exit_status = TID_ERROR;
+  sema_up(&current->fork_sema);
 	exit(TID_ERROR);
 }
 
@@ -249,44 +249,44 @@ process_exec (void *f_name) {
 	_if.eflags = FLAG_IF | FLAG_MBS;
     //created by CPU
 
-    /* We first kill the current context */
-	process_cleanup ();
+  /* We first kill the current context */
+process_cleanup ();
 
-    /* project3 */
-    #ifdef VM
-        supplemental_page_table_init(&thread_current() -> spt);
-    #endif
-    /* project3 */
+  /* project3 */
+  #ifdef VM
+      supplemental_page_table_init(&thread_current() -> spt);
+  #endif
+  /* project3 */
 
-    //project 2
-    int argc = 0;
-    char *argv[64];
-    char *ret_ptr, *next_ptr;
+  //project 2
+  int argc = 0;
+  char *argv[64];
+  char *ret_ptr, *next_ptr;
 
-    //parse argument and put to argv[] with argc++
-    ret_ptr = strtok_r(file_name, " ", &next_ptr); // filename = grep, next_ptr = foo bar
-    while (ret_ptr){
-        argv[argc++] = ret_ptr;
-        ret_ptr = strtok_r(NULL, " ", &next_ptr);
-    }
+  //parse argument and put to argv[] with argc++
+  ret_ptr = strtok_r(file_name, " ", &next_ptr); // filename = grep, next_ptr = foo bar
+  while (ret_ptr){
+      argv[argc++] = ret_ptr;
+      ret_ptr = strtok_r(NULL, " ", &next_ptr);
+  }
 
 
 
 	/* And then load the binary */
-    // lock_acquire(&filesys_lock); need this?
+  // lock_acquire(&filesys_lock); need this?
 	success = load (file_name, &_if);
-    // lock_release(&filesys_lock);
+  // lock_release(&filesys_lock);
 
 	/* If load failed, quit. */
 	if (!success){
         // palloc_free_page (file_name); // project 3
 		return -1;
-    }
+  }
 
-    argument_stack_for_user(argv, argc, &_if);
-    // hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true); // for debugging
+  argument_stack_for_user(argv, argc, &_if);
+  // hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true); // for debugging
 
-    palloc_free_page (file_name);
+  palloc_free_page (file_name);
 
 	/* Start switched process. */
 	do_iret (&_if);
@@ -296,52 +296,52 @@ process_exec (void *f_name) {
 // argument parsing for project 2
 void argument_stack_for_user(char ** argv, int argc, struct intr_frame *if_){
 
-    // argument stack downwards using rsp stack pointer
-    for(int i = argc - 1; i >= 0; i--){
-        int N = strlen(argv[i]) + 1; // for sentinel as '\0'
-        if_->rsp -= N;
-        memcpy(if_->rsp, argv[i], N);
-        argv[i] = (char *)if_->rsp; // for address of first letter of argv which will be pointed by if_->rsp
-    }
+  // argument stack downwards using rsp stack pointer
+  for(int i = argc - 1; i >= 0; i--){
+      int N = strlen(argv[i]) + 1; // for sentinel as '\0'
+      if_->rsp -= N;
+      memcpy(if_->rsp, argv[i], N);
+      argv[i] = (char *)if_->rsp; // for address of first letter of argv which will be pointed by if_->rsp
+  }
 
 
-    // 8의 배수(word-align)로 맞춰주기
-    if (if_->rsp % 8){
-        int padding = if_->rsp % 8 ;
-        if_->rsp -= padding;
-        memset(if_->rsp, 0, padding);
-    }
+  // 8의 배수(word-align)로 맞춰주기
+  if (if_->rsp % 8){
+      int padding = if_->rsp % 8 ;
+      if_->rsp -= padding;
+      memset(if_->rsp, 0, padding);
+  }
 
-    if_->rsp -= 8; // for sentinel
-    memset(if_->rsp, 0, 8);
+  if_->rsp -= 8; // for sentinel
+  memset(if_->rsp, 0, 8);
 
-    // put address
-    for(int i = argc - 1; i >= 0; i--){
-        if_->rsp -= 8;
-        memcpy(if_->rsp, &argv[i], 8);
-    }
+  // put address
+  for(int i = argc - 1; i >= 0; i--){
+      if_->rsp -= 8;
+      memcpy(if_->rsp, &argv[i], 8);
+  }
 
-    // fake return address
-    if_->rsp -= 8;
-    memset(if_->rsp, 0, 8);
+  // fake return address
+  if_->rsp -= 8;
+  memset(if_->rsp, 0, 8);
 
-    /* rdi 에는 인자의 개수, rsi 에는 argv 첫 인자의 시작 주소 저장*/
-    if_->R.rdi = argc;
-    if_->R.rsi = if_->rsp + 8; // fake return address + 8
+  /* rdi 에는 인자의 개수, rsi 에는 argv 첫 인자의 시작 주소 저장*/
+  if_->R.rdi = argc;
+  if_->R.rsi = if_->rsp + 8; // fake return address + 8
 }
 
 /* project2 - put tid and return child thread ptr */
 struct thread*
 thread_child(int tid){
-    struct thread *cur = thread_current();
-    struct list *child_list = &cur->child_list;
+  struct thread *cur = thread_current();
+  struct list *child_list = &cur->child_list;
 
-    if (list_empty(child_list)) return NULL;
-    for(struct list_elem *e = list_begin(child_list); e !=list_end(child_list); e=list_next(e)){
-        struct thread *child = list_entry(e, struct thread, child_elem);
-        if(child->tid == tid) return child;
-    }
-    return NULL;
+  if (list_empty(child_list)) return NULL;
+  for(struct list_elem *e = list_begin(child_list); e !=list_end(child_list); e=list_next(e)){
+      struct thread *child = list_entry(e, struct thread, child_elem);
+      if(child->tid == tid) return child;
+  }
+  return NULL;
 }
 
 
@@ -360,17 +360,17 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 
-    // project 2
-    struct thread *child = thread_child(child_tid);
-    if (!child) return -1; //자식이 없으면 -1 리턴
+  // project 2
+  struct thread *child = thread_child(child_tid);
+  if (!child) return -1; //자식이 없으면 -1 리턴
 
-    sema_down(&child->wait_sema); // 자식이 wait sema를 올릴떄까지 block 상태
+  sema_down(&child->wait_sema); // 자식이 wait sema를 올릴떄까지 block 상태
 
-    /* 자식이 프로세스를 종료하면서, exit status를 갱신하고 wait_sema up을 한다.*/
-	int exit_status = child->exit_status;
+  /* 자식이 프로세스를 종료하면서, exit status를 갱신하고 wait_sema up을 한다.*/
+  int exit_status = child->exit_status;
 
-	list_remove(&child->child_elem);
-	sema_up(&child->free_sema); // 터미네이트 되길 기다리는 차일드를 놓아준다.
+  list_remove(&child->child_elem);
+  sema_up(&child->free_sema); // 터미네이트 되길 기다리는 차일드를 놓아준다.
 
 	// 부모 프로세스의 wait()이 끝나면 차일드가 제거됨. (process_exit 에서 블록상태해제)
 	return exit_status;
@@ -400,15 +400,15 @@ process_exit (void) {
 	// project2 wake up parent process(thread)
 	sema_up(&cur->wait_sema); // 부모 프로세스를 unblock 시켜줌 (ready큐에 다시 삽입)
 
-    // 차일드는 부모가 exit_status를 확인하고 sema_up(free_sema)를
-    // 부르기 전까지 제거 되지 않고 기다린다.(block상태 돌입)
+  // 차일드는 부모가 exit_status를 확인하고 sema_up(free_sema)를
+  // 부르기 전까지 제거 되지 않고 기다린다.(block상태 돌입)
 	sema_down(&cur->free_sema);
 
-    /*project 3*/
-    #ifdef EFILESYS
+  /*project 3*/
+  #ifdef EFILESYS
     dir_close(thread_current()->cur_dir); //
-    #endif
-    /*project 3*/
+  #endif
+  /*project 3*/
 }
 
 /* Free the current process's resources. */
@@ -417,10 +417,10 @@ process_cleanup (void) {
 	struct thread *curr = thread_current ();
 
 #ifdef VM
-    /*project 3*/
+  /*project 3*/
 	if(!hash_empty(&curr->spt.pages))
-	    supplemental_page_table_kill (&curr->spt);
-    /*project 3*/
+    supplemental_page_table_kill (&curr->spt);
+  /*project 3*/
 #endif
 
 	uint64_t *pml4;
@@ -741,10 +741,10 @@ setup_stack (struct intr_frame *if_) {
 	kpage = palloc_get_page (PAL_USER | PAL_ZERO);
 	if (kpage != NULL) {
 		success = install_page (((uint8_t *) USER_STACK) - PGSIZE, kpage, true);
-		if (success)
-			if_->rsp = USER_STACK;
-		else
-			palloc_free_page (kpage);
+  if (success)
+    if_->rsp = USER_STACK;
+  else
+    palloc_free_page (kpage);
 	}
 	return success;
 }
@@ -786,26 +786,26 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
 
-    /* project3 */
-    if (page == NULL) return false;
+  /* project3 */
+  if (page == NULL) return false;
 
 	// struct load_info* li = (struct load_info *) aux;
 
 	struct file *file = ((struct container *)aux)->file;
 	off_t offsetof = ((struct container *)aux)->offset;
 	size_t page_read_bytes = ((struct container *)aux)->page_read_bytes;
-    size_t page_zero_bytes = PGSIZE - page_read_bytes;
+  size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 	file_seek(file, offsetof);
 
-    if (file_read(file, page->frame->kva, page_read_bytes) != (int)page_read_bytes) {
-		palloc_free_page(page->frame->kva);
-        return false;
-    }
-    memset(page->frame->kva + page_read_bytes, 0, page_zero_bytes);
+  if (file_read(file, page->frame->kva, page_read_bytes) != (int)page_read_bytes) {
+  palloc_free_page(page->frame->kva);
+      return false;
+  }
+  memset(page->frame->kva + page_read_bytes, 0, page_zero_bytes);
 
-    return true;
-    /* project3 */
+  return true;
+  /* project3 */
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -878,11 +878,11 @@ setup_stack (struct intr_frame *if_) {
 	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)) { // 9, USER_STACK - PGSIZE, 1
 		success = vm_claim_page(stack_bottom);
 
-		if (success) {
-			if_->rsp = USER_STACK;
-            thread_current()->stack_bottom = stack_bottom;
+  if (success) {
+    if_->rsp = USER_STACK;
+    thread_current()->stack_bottom = stack_bottom;
 		}
-    }
+  }
     /* project3 */
 
 	return success;

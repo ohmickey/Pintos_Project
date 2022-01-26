@@ -58,6 +58,8 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
 
 	struct supplemental_page_table *spt = &thread_current ()->spt;
+  /*project 3*/
+  struct page* page = (struct page*)malloc(sizeof(struct page)); //tmp
 
 	/* Check wheter the upage is already occupied or not. */
 	if (spt_find_page (spt, upage) == NULL) {
@@ -66,7 +68,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		 * TODO: should modify the field after calling the uninit_new. */
 
     /*project 3*/
-		struct page* page = (struct page*)malloc(sizeof(struct page));
+		// struct page* page = (struct page*)malloc(sizeof(struct page));
 
     typedef bool (*initializerFunc)(struct page *, enum vm_type, void *);
     initializerFunc initializer = NULL;
@@ -87,6 +89,8 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		return spt_insert_page(spt, page);
     /*project 3*/
 	}
+  free(page);
+  free(aux);
   return false;
 }
 
@@ -367,9 +371,11 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
     /* project3 */
 bool insert_page(struct hash *pages, struct page *p) {
     if (!hash_insert(pages, &p->hash_elem))
-        return true;
-    else
-        return false;
+      return true;
+    else{
+      free(p);
+      return false;
+    }
 }
 
 bool delete_page(struct hash *pages, struct page *p) {

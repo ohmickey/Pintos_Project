@@ -227,21 +227,21 @@ tid_t thread_create (const char *name, int priority, thread_func *function, void
 	/* Initialize thread. */
 	init_thread (t, name, priority); //need to check for project 2
 
-    // project2 for allocation of fd
+  // project2 for allocation of fd
 	t->fd_table = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
 	if (t->fd_table == NULL)
 		return TID_ERROR;
 	t->fd_idx = 2; // do not need std_error which is originally 2
 
-    t->fd_table[0] = 1;
+  t->fd_table[0] = 1;
 	t->fd_table[1] = 2;
 	// t->stdin_count = 1;
 	// t->stdout_count = 1;
 
     ///////////////
 
-    tid = t->tid = allocate_tid ();
-    struct thread *cur = thread_current();
+  tid = t->tid = allocate_tid ();
+  struct thread *cur = thread_current();
 	list_push_back(&cur->child_list, &t->child_elem); //child 스레드 주소를 부모의 차일드 리스트에 삽입
 
 
@@ -287,7 +287,7 @@ thread_block (void) {
    update other data. */
 void thread_unblock (struct thread *t) {
 	enum intr_level old_level;
-    ASSERT (is_thread (t));
+  ASSERT (is_thread (t));
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
@@ -353,7 +353,7 @@ void thread_yield (void) {
 
 	old_level = intr_disable ();
 	if (curr != idle_thread) {
-        // update for project 1 - ready list ordered by priority
+    // update for project 1 - ready list ordered by priority
 		list_insert_ordered(&ready_list, &curr->elem, thread_compare_priority, 0);
 	}
 	do_schedule (THREAD_READY);
@@ -362,12 +362,12 @@ void thread_yield (void) {
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority (int new_priority) {
-    enum intr_level old_level = intr_disable();
+  enum intr_level old_level = intr_disable();
 
 	thread_current ()->init_priority = new_priority;
 	refresh_priority();
 
-    intr_set_level(old_level);
+  intr_set_level(old_level);
 	preemption();
 }
 
@@ -472,12 +472,12 @@ static void init_thread (struct thread *t, const char *name, int priority) {
 	t->wait_on_lock = NULL;
 	list_init(&t->donations);
 
-    // update for project 2
+  // update for project 2
 	list_init(&t->child_list);
 	sema_init(&t->wait_sema, 0);
 	sema_init(&t->fork_sema, 0);
 	sema_init(&t->free_sema, 0);
-    t->running = NULL;
+  t->running = NULL;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -600,7 +600,7 @@ do_schedule(int status) {
 	ASSERT (thread_current()->status == THREAD_RUNNING);
 	while (!list_empty (&destruction_req)) {
 		struct thread *victim =
-			list_entry (list_pop_front (&destruction_req), struct thread, elem);
+    list_entry (list_pop_front (&destruction_req), struct thread, elem);
 		palloc_free_page(victim);
 	}
 	thread_current ()->status = status;
@@ -673,10 +673,10 @@ int64_t get_next_tick_to_awake(void) {
 
 void preemption(void) {
 	if (!list_empty(&ready_list) && thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority) {
-        if (intr_context())
-            intr_yield_on_return();
-        else
-            thread_yield();
+    if (intr_context())
+      intr_yield_on_return();
+    else
+      thread_yield();
 	}
 }
 

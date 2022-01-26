@@ -25,7 +25,7 @@ static const struct page_operations anon_ops = {
 /* project3 */
 struct bitmap *swap_table;
 const size_t SECTORS_PER_PAGE = PGSIZE / DISK_SECTOR_SIZE;
-
+// struct lock bitmap_lock;
 
 /* Initialize the data for anonymous pages */
 void
@@ -36,6 +36,7 @@ vm_anon_init (void) {
     swap_disk = disk_get(1, 1);
     size_t swap_size = disk_size(swap_disk) / SECTORS_PER_PAGE;
     swap_table = bitmap_create(swap_size);
+    // lock_init(&bitmap_lock);
     /* project3 */
 
 }
@@ -73,21 +74,25 @@ anon_swap_in (struct page *page, void *kva) {
 static bool
 anon_swap_out (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
-    /* project3 */
-    int page_no = bitmap_scan(swap_table, 0, 1, false);
+  /* project3 */
+  // lock_acquire(&bitmap_lock);
+  int page_no = bitmap_scan(swap_table, 0, 1, false);
+  // lock_release(&bitmap_lock);
+  if (page_no == BITMAP_ERROR) {
+      return false;
+  }
 
-    if (page_no == BITMAP_ERROR) {
-        return false;
-    }
+  for (int i = 0; i < SECTORS_PER_PAGE; ++i) {
+      disk_write(swap_disk, page_no * SECTORS_PER_PAGE + i, page->va + DISK_SECTOR_SIZE * i);
+  }
+  bitmap_set(swap_table, page_no, true);
 
-    for (int i = 0; i < SECTORS_PER_PAGE; ++i) {
-        disk_write(swap_disk, page_no * SECTORS_PER_PAGE + i, page->va + DISK_SECTOR_SIZE * i);
-    }
-    bitmap_set(swap_table, page_no, true);
-
-    pml4_clear_page(thread_current()->pml4, page->va);
-    anon_page->swap_index = page_no;
+  pml4_clear_page(thread_current()->pml4, page->va);
+  anon_page->swap_index = page_no;
+  if (!page->frame){
+    page->frame->page = NULL;
     page->frame = NULL; //p3mtp need?
+  }
 
 	return true;
     /* project3 */

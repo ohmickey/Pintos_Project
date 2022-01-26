@@ -74,11 +74,15 @@ file_backed_swap_out (struct page *page) {
 
   // check dirty page
   if(pml4_is_dirty(thread_current()->pml4, page->va)){
-      file_write_at(aux->file, page->va, aux->page_read_bytes, aux->offset);
-      pml4_set_dirty (thread_current()->pml4, page->va, 0);
+    file_write_at(aux->file, page->va, aux->page_read_bytes, aux->offset);
+    pml4_set_dirty (thread_current()->pml4, page->va, 0);
   }
 
   pml4_clear_page(thread_current()->pml4, page->va);
+  if (!page->frame){
+    page->frame->page = NULL;
+    page->frame = NULL; //p3mtp need?
+  }
   // page->frame = NULL; //p3tmp need?
 	return true;
   /* project3 */
