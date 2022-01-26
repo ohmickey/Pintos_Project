@@ -218,7 +218,7 @@ tid_t fork(const char *thread_name){
 
 int exec(const char *cmd_line){
     int size = strlen(cmd_line) + 1;
-    char *fn_copy = palloc_get_page(PAL_ZERO);
+    char *fn_copy = palloc_get_page(PAL_ZERO); // kernel pool 을 0으로 초기화
 
     if (!fn_copy) exit(-1);
 
@@ -453,7 +453,7 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
     if (file == NULL)
         return NULL;
 
-    return do_mmap(addr, length, writable, file, offset);
+    return do_mmap(addr, length, writable, file, offset); // load segment 랑  비슷한 역할을 한다.
 }
 
 void munmap (void *addr) {

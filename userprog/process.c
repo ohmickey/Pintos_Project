@@ -249,10 +249,13 @@ process_exec (void *f_name) {
 	_if.eflags = FLAG_IF | FLAG_MBS;
     //created by CPU
 
+    /* We first kill the current context */
+	process_cleanup ();
+
     /* project3 */
-#ifdef VM
-    supplemental_page_table_init(&thread_current() -> spt);
-#endif
+    #ifdef VM
+        supplemental_page_table_init(&thread_current() -> spt);
+    #endif
     /* project3 */
 
     //project 2
@@ -267,11 +270,10 @@ process_exec (void *f_name) {
         ret_ptr = strtok_r(NULL, " ", &next_ptr);
     }
 
-    /* We first kill the current context */
-	process_cleanup ();
+
 
 	/* And then load the binary */
-    // lock_acquire(&filesys_lock);
+    // lock_acquire(&filesys_lock); need this?
 	success = load (file_name, &_if);
     // lock_release(&filesys_lock);
 
